@@ -63,7 +63,6 @@ class OrderService:
                 
                 logger.info(f"Order {order.id} created by client {client.id}")
                 
-                # Send WebSocket notifications
                 websocket_notifier.notify_order_created(order)
                 
                 return order
@@ -89,11 +88,15 @@ class OrderService:
             InsufficientPermissionsError: If user cannot view the order
         """
         try:
-            order = Order.objects.select_related('client', 'worker').get(id=order_id)
+            order = Order.objects.select_related('client', 'worker').only(
+                'id', 'service_name', 'description', 'price', 'status',
+                'created_at', 'updated_at', 'paid_at', 'completed_at',
+                'client__id', 'client__username', 'client__first_name', 'client__last_name', 'client__gender',
+                'worker__id', 'worker__username', 'worker__first_name', 'worker__last_name'
+            ).get(id=order_id)
         except Order.DoesNotExist:
             raise OrderNotFoundError()
         
-        # Check permissions
         if not OrderService._can_user_view_order(user, order):
             raise InsufficientPermissionsError("Cannot view this order.")
         
@@ -114,19 +117,22 @@ class OrderService:
         if not user.can_view_orders():
             return Order.objects.none()
         
-        queryset = Order.objects.select_related('client', 'worker')
+        queryset = Order.objects.select_related('client', 'worker').only(
+            'id', 'service_name', 'description', 'price', 'status',
+            'created_at', 'updated_at', 'paid_at', 'completed_at',
+            'client__id', 'client__username', 'client__first_name', 'client__last_name', 'client__gender',
+            'worker__id', 'worker__username', 'worker__first_name', 'worker__last_name'
+        )
         
         if user.is_client:
             queryset = queryset.filter(client=user)
         elif user.is_worker:
             queryset = queryset.filter(client__gender=user.gender)
         elif user.is_admin:
-            # Admins can see all orders
             pass
         else:
             return Order.objects.none()
         
-        # Apply additional filters
         for key, value in filters.items():
             if hasattr(Order, key):
                 queryset = queryset.filter(**{key: value})
@@ -161,13 +167,11 @@ class OrderService:
         
         old_status = order.status
         
-        # Validate status transition
         if not order._is_valid_status_transition(old_status, new_status):
             raise InvalidOrderStatusError()
         
         try:
             with transaction.atomic():
-                # Update order
                 for key, value in kwargs.items():
                     if hasattr(order, key):
                         setattr(order, key, value)
@@ -177,7 +181,6 @@ class OrderService:
                 
                 logger.info(f"Order {order.id} status updated from {old_status} to {new_status}")
                 
-                # Send WebSocket notifications
                 websocket_notifier.notify_order_updated(order, old_status)
                 
                 return order
@@ -213,7 +216,6 @@ class OrderService:
         if success:
             logger.info(f"Worker {worker.id} assigned to order {order.id}")
             
-            # Send notifications
             websocket_notifier.notify_order_updated(order, order.status)
         
         return success
@@ -244,7 +246,6 @@ class OrderService:
         if success:
             logger.info(f"Work started on order {order.id} by worker {user.id}")
             
-            # Send notifications
             websocket_notifier.notify_order_updated(order, order.status)
         
         return success
@@ -275,7 +276,6 @@ class OrderService:
         if success:
             logger.info(f"Order {order.id} completed by worker {user.id}")
             
-            # Send notifications
             websocket_notifier.notify_order_updated(order, order.status)
         
         return success
@@ -394,7 +394,6 @@ class PaymentService:
                 
                 logger.info(f"Payment processed for order {order.id}. Success: {success}")
                 
-                # Send WebSocket notifications
                 websocket_notifier.notify_payment_processed(order, success)
                 
                 return order
@@ -432,7 +431,6 @@ class PaymentService:
                 
                 logger.info(f"Refund processed for order {order.id} by user {user.id}. Reason: {reason}")
                 
-                # Send notifications
                 websocket_notifier.notify_payment_processed(order, False)
                 
                 return True

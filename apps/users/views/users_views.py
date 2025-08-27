@@ -6,11 +6,13 @@ import logging
 
 from loguru import logger
 from rest_framework import generics, status
+from rest_framework.generics import CreateAPIView, RetrieveUpdateAPIView, ListAPIView, RetrieveAPIView, GenericAPIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.exceptions import PermissionDenied
+from django.db.models import Prefetch
 
 from apps.users.models import User
 from apps.users.serializers.users_serializers import (
@@ -25,8 +27,7 @@ from apps.users.services import UserService
 from apps.utils.exceptions import InsufficientPermissionsError
 
 
-
-class UserRegisterView(generics.CreateAPIView):
+class UserRegisterView(CreateAPIView):
     """
     Register a new user.
     
@@ -60,7 +61,7 @@ class UserRegisterView(generics.CreateAPIView):
             raise
 
 
-class UserLoginView(generics.GenericAPIView):
+class UserLoginView(GenericAPIView):
     """
     User login/sign-in endpoint.
     
@@ -92,7 +93,7 @@ class UserLoginView(generics.GenericAPIView):
             raise
 
 
-class UserProfileView(generics.RetrieveUpdateAPIView):
+class UserProfileView(RetrieveUpdateAPIView):
     """
     Retrieve and update user profile.
     
@@ -139,7 +140,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
             raise
 
 
-class UserListView(generics.ListAPIView):
+class UserListView(ListAPIView):
     """
     List users based on permissions.
     
@@ -155,14 +156,19 @@ class UserListView(generics.ListAPIView):
     ordering = ['username']
     
     def get_queryset(self):
-        """Get users based on permissions."""
+        """Get users based on permissions with optimized queries."""
         if getattr(self, 'swagger_fake_view', False):
             return User.objects.none()
         
+        queryset = User.objects.select_related().only(
+            'id', 'username', 'first_name', 'last_name', 'role', 
+            'gender', 'is_active', 'date_joined'
+        )
+        
         if self.request.user.is_admin:
-            return User.objects.all()
+            return queryset
         else:
-            return User.objects.filter(id=self.request.user.id)
+            return queryset.filter(id=self.request.user.id)
     
     def get_serializer_context(self):
         """Add user to serializer context."""
@@ -171,7 +177,7 @@ class UserListView(generics.ListAPIView):
         return context
 
 
-class UserDetailView(generics.RetrieveAPIView):
+class UserDetailView(RetrieveAPIView):
     """
     Retrieve detailed user information.
     
@@ -183,19 +189,25 @@ class UserDetailView(generics.RetrieveAPIView):
     lookup_field = 'pk'
     
     def get_queryset(self):
-        """Get users based on permissions."""
+        """Get users based on permissions with optimized queries."""
         # Handle Swagger schema generation
         if getattr(self, 'swagger_fake_view', False):
             return User.objects.none()
-        return User.objects.all()
+        
+        return User.objects.select_related().only(
+            'id', 'username', 'email', 'first_name', 'last_name', 'role', 
+            'gender', 'phone_number', 'is_active', 'date_joined'
+        )
     
     def retrieve(self, request, *args, **kwargs):
         """Retrieve user with permission check."""
         try:
-            user = UserService.get_user_by_id(
-                user_id=self.kwargs['pk'],
-                requesting_user=request.user
-            )
+            # Get user from queryset first
+            user = self.get_object()
+            
+            # Check permissions using service
+            if not UserService._can_user_view_user(request.user, user):
+                raise InsufficientPermissionsError("Cannot view this user.")
             
             serializer = self.get_serializer(user)
             return Response(serializer.data)
@@ -212,7 +224,7 @@ class UserDetailView(generics.RetrieveAPIView):
             )
 
 
-class UserPasswordChangeView(generics.GenericAPIView):
+class UserPasswordChangeView(GenericAPIView):
     """
     Change user password.
     
@@ -250,7 +262,7 @@ class UserPasswordChangeView(generics.GenericAPIView):
             raise
 
 
-class UserManagementView(generics.GenericAPIView):
+class UserManagementView(GenericAPIView):
     """
     Admin-only user management actions.
     
@@ -273,7 +285,9 @@ class UserManagementView(generics.GenericAPIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            target_user = User.objects.get(id=user_id)
+            target_user = User.objects.select_related().only(
+                'id', 'role', 'gender', 'is_active'
+            ).get(id=user_id)
             
             if action == 'activate':
                 success = UserService.activate_user(target_user, request.user)
@@ -311,7 +325,7 @@ class UserManagementView(generics.GenericAPIView):
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 
-                target_user.save()
+                target_user.save(update_fields=['role'])
                 logger.info(f"User {target_user.id} role updated to {new_role} by admin {request.user.id}")
                 
                 return Response({'detail': 'User role updated successfully.'})
@@ -334,7 +348,7 @@ class UserManagementView(generics.GenericAPIView):
             )
 
 
-class WorkerListView(generics.ListAPIView):
+class WorkerListView(ListAPIView):
     """
     List workers by gender specialization.
     
@@ -345,15 +359,29 @@ class WorkerListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        """Get workers by gender specialization."""
+        """Get workers by gender specialization with optimized queries."""
         if getattr(self, 'swagger_fake_view', False):
             return User.objects.none()
+        
         gender = self.request.query_params.get('gender')
         if not gender:
             return User.objects.none()
         
         try:
-            return UserService.get_workers_by_gender(gender, self.request.user)
+            queryset = User.objects.filter(
+                role=User.Role.WORKER,
+                gender=gender,
+                is_active=True
+            ).select_related().only(
+                'id', 'username', 'first_name', 'last_name', 'role', 
+                'gender', 'is_active', 'date_joined'
+            ).order_by('username')
+            
+            if not self.request.user.can_view_orders():
+                raise InsufficientPermissionsError("Cannot view workers.")
+            
+            return queryset
+            
         except InsufficientPermissionsError:
             return User.objects.none()
     

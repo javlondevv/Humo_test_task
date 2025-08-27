@@ -85,7 +85,10 @@ class UserService:
             InsufficientPermissionsError: If requesting user cannot view the target user
         """
         try:
-            user = User.objects.get(id=user_id)
+            user = User.objects.select_related().only(
+                'id', 'username', 'email', 'first_name', 'last_name', 'role', 
+                'gender', 'phone_number', 'is_active', 'date_joined'
+            ).get(id=user_id)
         except User.DoesNotExist:
             raise User.DoesNotExist("User not found.")
         
@@ -110,7 +113,10 @@ class UserService:
         if not requesting_user.is_admin:
             raise InsufficientPermissionsError("Only admins can view users by role.")
         
-        return User.objects.filter(role=role).order_by('username')
+        return User.objects.filter(role=role).select_related().only(
+            'id', 'username', 'first_name', 'last_name', 'role', 
+            'gender', 'is_active', 'date_joined'
+        ).order_by('username')
     
     @staticmethod
     def get_workers_by_gender(gender: str, requesting_user: User) -> List[User]:
@@ -131,6 +137,9 @@ class UserService:
             role=User.Role.WORKER,
             gender=gender,
             is_active=True
+        ).select_related().only(
+            'id', 'username', 'first_name', 'last_name', 'role', 
+            'gender', 'is_active', 'date_joined'
         ).order_by('username')
     
     @staticmethod
