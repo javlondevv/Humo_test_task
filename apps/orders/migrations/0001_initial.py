@@ -5,31 +5,103 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Order',
+            name="Order",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('service_name', models.CharField(help_text='Name of the service requested', max_length=255, verbose_name='service name')),
-                ('description', models.TextField(blank=True, help_text='Detailed description of the service', verbose_name='description')),
-                ('price', models.PositiveIntegerField(help_text='Price of the service in the smallest currency unit', validators=[django.core.validators.MinValueValidator(1)], verbose_name='price')),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('paid', 'Paid'), ('in_progress', 'In Progress'), ('completed', 'Completed'), ('canceled', 'Canceled')], default='pending', help_text='Current status of the order', max_length=20, verbose_name='status')),
-                ('created_at', models.DateTimeField(auto_now_add=True, help_text='When the order was created', verbose_name='created at')),
-                ('updated_at', models.DateTimeField(auto_now=True, help_text='When the order was last updated', verbose_name='updated at')),
-                ('paid_at', models.DateTimeField(blank=True, help_text='When the order was paid', null=True, verbose_name='paid at')),
-                ('completed_at', models.DateTimeField(blank=True, help_text='When the order was completed', null=True, verbose_name='completed at')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "service_name",
+                    models.CharField(
+                        help_text="Name of the service requested",
+                        max_length=255,
+                        verbose_name="service name",
+                    ),
+                ),
+                (
+                    "description",
+                    models.TextField(
+                        blank=True,
+                        help_text="Detailed description of the service",
+                        verbose_name="description",
+                    ),
+                ),
+                (
+                    "price",
+                    models.PositiveIntegerField(
+                        help_text="Price of the service in the smallest currency unit",
+                        validators=[django.core.validators.MinValueValidator(1)],
+                        verbose_name="price",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("paid", "Paid"),
+                            ("in_progress", "In Progress"),
+                            ("completed", "Completed"),
+                            ("canceled", "Canceled"),
+                        ],
+                        default="pending",
+                        help_text="Current status of the order",
+                        max_length=20,
+                        verbose_name="status",
+                    ),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True,
+                        help_text="When the order was created",
+                        verbose_name="created at",
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True,
+                        help_text="When the order was last updated",
+                        verbose_name="updated at",
+                    ),
+                ),
+                (
+                    "paid_at",
+                    models.DateTimeField(
+                        blank=True,
+                        help_text="When the order was paid",
+                        null=True,
+                        verbose_name="paid at",
+                    ),
+                ),
+                (
+                    "completed_at",
+                    models.DateTimeField(
+                        blank=True,
+                        help_text="When the order was completed",
+                        null=True,
+                        verbose_name="completed at",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'order',
-                'verbose_name_plural': 'orders',
-                'db_table': 'orders_order',
-                'ordering': ['-created_at'],
+                "verbose_name": "order",
+                "verbose_name_plural": "orders",
+                "db_table": "orders_order",
+                "ordering": ["-created_at"],
             },
         ),
     ]

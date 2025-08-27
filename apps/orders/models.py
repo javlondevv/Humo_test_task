@@ -3,8 +3,9 @@ Order models for the application.
 """
 
 from django.core.validators import MinValueValidator
-from django.db.models import Model, TextChoices, CharField, TextField, PositiveIntegerField, ForeignKey, CASCADE, \
-    SET_NULL, DateTimeField, Index
+from django.db.models import (CASCADE, SET_NULL, CharField, DateTimeField,
+                              ForeignKey, Index, Model, PositiveIntegerField,
+                              TextChoices, TextField)
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import ValidationError
@@ -15,100 +16,91 @@ from apps.utils.constants import ORDER_STATUSES
 class Order(Model):
     """
     Order model representing service orders in the system.
-    
+
     Orders are created by clients and can be managed by workers.
     Each order has a status that tracks its lifecycle.
     """
 
     class Status(TextChoices):
         """Order status choices."""
-        PENDING = ORDER_STATUSES['PENDING'], _('Pending')
-        PAID = ORDER_STATUSES['PAID'], _('Paid')
-        IN_PROGRESS = ORDER_STATUSES['IN_PROGRESS'], _('In Progress')
-        COMPLETED = ORDER_STATUSES['COMPLETED'], _('Completed')
-        CANCELED = ORDER_STATUSES['CANCELED'], _('Canceled')
+
+        PENDING = ORDER_STATUSES["PENDING"], _("Pending")
+        PAID = ORDER_STATUSES["PAID"], _("Paid")
+        IN_PROGRESS = ORDER_STATUSES["IN_PROGRESS"], _("In Progress")
+        COMPLETED = ORDER_STATUSES["COMPLETED"], _("Completed")
+        CANCELED = ORDER_STATUSES["CANCELED"], _("Canceled")
 
     service_name = CharField(
-        _('service name'),
-        max_length=255,
-        help_text=_('Name of the service requested')
+        _("service name"), max_length=255, help_text=_("Name of the service requested")
     )
 
     description = TextField(
-        _('description'),
-        blank=True,
-        help_text=_('Detailed description of the service')
+        _("description"), blank=True, help_text=_("Detailed description of the service")
     )
 
     price = PositiveIntegerField(
-        _('price'),
+        _("price"),
         validators=[MinValueValidator(1)],
-        help_text=_('Price of the service in the smallest currency unit')
+        help_text=_("Price of the service in the smallest currency unit"),
     )
 
     status = CharField(
-        _('status'),
+        _("status"),
         max_length=20,
         choices=Status.choices,
         default=Status.PENDING,
-        help_text=_('Current status of the order')
+        help_text=_("Current status of the order"),
     )
 
     client = ForeignKey(
-        'users.User',
+        "users.User",
         on_delete=CASCADE,
-        related_name='orders',
-        verbose_name=_('client'),
-        help_text=_('Client who created the order')
+        related_name="orders",
+        verbose_name=_("client"),
+        help_text=_("Client who created the order"),
     )
 
     worker = ForeignKey(
-        'users.User',
+        "users.User",
         on_delete=SET_NULL,
         null=True,
         blank=True,
-        related_name='assigned_orders',
-        verbose_name=_('worker'),
-        help_text=_('Worker assigned to the order')
+        related_name="assigned_orders",
+        verbose_name=_("worker"),
+        help_text=_("Worker assigned to the order"),
     )
 
     created_at = DateTimeField(
-        _('created at'),
-        auto_now_add=True,
-        help_text=_('When the order was created')
+        _("created at"), auto_now_add=True, help_text=_("When the order was created")
     )
 
     updated_at = DateTimeField(
-        _('updated at'),
-        auto_now=True,
-        help_text=_('When the order was last updated')
+        _("updated at"), auto_now=True, help_text=_("When the order was last updated")
     )
 
     paid_at = DateTimeField(
-        _('paid at'),
-        null=True,
-        blank=True,
-        help_text=_('When the order was paid')
+        _("paid at"), null=True, blank=True, help_text=_("When the order was paid")
     )
 
     completed_at = DateTimeField(
-        _('completed at'),
+        _("completed at"),
         null=True,
         blank=True,
-        help_text=_('When the order was completed')
+        help_text=_("When the order was completed"),
     )
 
     class Meta:
         """Meta options for Order model."""
-        verbose_name = _('order')
-        verbose_name_plural = _('orders')
-        db_table = 'orders_order'
-        ordering = ['-created_at']
+
+        verbose_name = _("order")
+        verbose_name_plural = _("orders")
+        db_table = "orders_order"
+        ordering = ["-created_at"]
         indexes = [
-            Index(fields=['status']),
-            Index(fields=['client']),
-            Index(fields=['worker']),
-            Index(fields=['created_at']),
+            Index(fields=["status"]),
+            Index(fields=["client"]),
+            Index(fields=["worker"]),
+            Index(fields=["created_at"]),
         ]
 
     def __str__(self):
@@ -120,25 +112,23 @@ class Order(Model):
         super().clean()
 
         if self.worker and self.worker.role != self.worker.Role.WORKER:
-            raise ValidationError({
-                'worker': _('Only workers can be assigned to orders.')
-            })
+            raise ValidationError(
+                {"worker": _("Only workers can be assigned to orders.")}
+            )
 
         if self.pk:
             old_instance = Order.objects.get(pk=self.pk)
             if not self._is_valid_status_transition(old_instance.status, self.status):
-                raise ValidationError({
-                    'status': _('Invalid status transition.')
-                })
+                raise ValidationError({"status": _("Invalid status transition.")})
 
     def _is_valid_status_transition(self, old_status: str, new_status: str) -> bool:
         """
         Check if the status transition is valid.
-        
+
         Args:
             old_status: Previous status
             new_status: New status
-            
+
         Returns:
             True if transition is valid, False otherwise
         """
@@ -212,15 +202,19 @@ class Order(Model):
     @property
     def can_be_canceled(self) -> bool:
         """Check if order can be canceled."""
-        return self.status in [self.Status.PENDING, self.Status.PAID, self.Status.IN_PROGRESS]
+        return self.status in [
+            self.Status.PENDING,
+            self.Status.PAID,
+            self.Status.IN_PROGRESS,
+        ]
 
     def assign_worker(self, worker) -> bool:
         """
         Assign a worker to the order.
-        
+
         Args:
             worker: User instance with worker role
-            
+
         Returns:
             True if assignment successful, False otherwise
         """
@@ -237,7 +231,7 @@ class Order(Model):
     def start_work(self) -> bool:
         """
         Start work on the order.
-        
+
         Returns:
             True if started successfully, False otherwise
         """
@@ -251,7 +245,7 @@ class Order(Model):
     def complete_order(self) -> bool:
         """
         Mark order as completed.
-        
+
         Returns:
             True if completed successfully, False otherwise
         """
@@ -265,7 +259,7 @@ class Order(Model):
     def cancel_order(self) -> bool:
         """
         Cancel the order.
-        
+
         Returns:
             True if canceled successfully, False otherwise
         """

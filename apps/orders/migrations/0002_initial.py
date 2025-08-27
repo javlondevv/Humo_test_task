@@ -6,39 +6,58 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('orders', '0001_initial'),
+        ("orders", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='order',
-            name='client',
-            field=models.ForeignKey(help_text='Client who created the order', on_delete=django.db.models.deletion.CASCADE, related_name='orders', to=settings.AUTH_USER_MODEL, verbose_name='client'),
+            model_name="order",
+            name="client",
+            field=models.ForeignKey(
+                help_text="Client who created the order",
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="orders",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="client",
+            ),
         ),
         migrations.AddField(
-            model_name='order',
-            name='worker',
-            field=models.ForeignKey(blank=True, help_text='Worker assigned to the order', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assigned_orders', to=settings.AUTH_USER_MODEL, verbose_name='worker'),
+            model_name="order",
+            name="worker",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Worker assigned to the order",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="assigned_orders",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="worker",
+            ),
         ),
         migrations.AddIndex(
-            model_name='order',
-            index=models.Index(fields=['status'], name='orders_orde_status_c6dd84_idx'),
+            model_name="order",
+            index=models.Index(fields=["status"], name="orders_orde_status_c6dd84_idx"),
         ),
         migrations.AddIndex(
-            model_name='order',
-            index=models.Index(fields=['client'], name='orders_orde_client__7a26db_idx'),
+            model_name="order",
+            index=models.Index(
+                fields=["client"], name="orders_orde_client__7a26db_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='order',
-            index=models.Index(fields=['worker'], name='orders_orde_worker__fb9157_idx'),
+            model_name="order",
+            index=models.Index(
+                fields=["worker"], name="orders_orde_worker__fb9157_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='order',
-            index=models.Index(fields=['created_at'], name='orders_orde_created_0e92de_idx'),
+            model_name="order",
+            index=models.Index(
+                fields=["created_at"], name="orders_orde_created_0e92de_idx"
+            ),
         ),
     ]

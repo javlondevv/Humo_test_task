@@ -19,34 +19,6 @@ A modern Django-based order management system with real-time WebSocket notificat
 - **Service Layer** pattern for business logic
 - **Comprehensive Error Handling** with custom exceptions
 
-## Quick Start
-
-1. **Clone and Setup**:
-   ```bash
-   git clone <repository>
-   cd Humo_test_task
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-2. **Environment Variables**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your database and secret key
-   ```
-
-3. **Database Setup**:
-   ```bash
-   python manage.py makemigrations
-   python manage.py migrate
-   python manage.py createsuperuser
-   ```
-
-4. **Run Development Server**:
-   ```bash
-   python manage.py runserver
-   ```
 
 ## API Endpoints
 
@@ -85,6 +57,4 @@ flake8
 isort .
 ```
 
-## License
 
-MIT License
